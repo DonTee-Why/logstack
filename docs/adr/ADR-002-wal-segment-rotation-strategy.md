@@ -19,10 +19,12 @@ The Write-Ahead Log (WAL) system requires a segment rotation policy that determi
 ### Current Challenge
 
 We initially considered a simple dual-condition rotation policy:
+
 - Size-based: Rotate at 128MB
 - Time-based: Rotate after 1 hour
 
 However, this creates conflicting requirements:
+
 - **Fast debugging needs**: Logs should appear in Loki within minutes for active debugging
 - **Storage efficiency**: Low-traffic services shouldn't create hourly 1MB files
 - **Operational simplicity**: The policy should be predictable and configurable
@@ -75,7 +77,7 @@ wal:
   idle_threshold_minutes: 10             # Consider idle after 10 min no writes
   
   # Minimum thresholds
-  min_rotation_bytes: 1048576            # 1MB - minimum size for time-based rotation
+  min_rotation_bytes: 65536              # 64KB - minimum size for time-based rotation
   force_rotation_hours: 6                # Force rotate after 6 hours regardless
   
   # Manual controls
@@ -98,6 +100,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "flushed_segments": [
@@ -114,69 +117,102 @@ Content-Type: application/json
 
 ## Implementation Logic
 
-```python
-class SegmentRotationManager:
-    def should_rotate(self, segment: WALSegment) -> bool:
-        # Hard size limit
-        if segment.size_bytes >= self.config.segment_max_bytes:
-            return True
-        
-        # Don't rotate tiny segments unless forced
-        if (segment.size_bytes < self.config.min_rotation_bytes and 
-            segment.age_seconds < self.config.force_rotation_hours * 3600):
-            return False
-        
-        # Check activity pattern
-        is_active = segment.seconds_since_last_write < (self.config.idle_threshold_minutes * 60)
-        
-        if is_active:
-            # Active segment: rotate every 5 minutes if size >= 1MB
-            return (segment.age_seconds >= self.config.rotation_time_active_minutes * 60 and
-                    segment.size_bytes >= self.config.min_rotation_bytes)
-        else:
-            # Idle segment: rotate every hour
-            return segment.age_seconds >= self.config.rotation_time_idle_hours * 3600
+### Core Rotation Decision Algorithm
+
+```pseudocode
+FUNCTION should_rotate_segment(segment):
+    // Hard size limit - always rotate if too big
+    IF segment.size_bytes >= MAX_SEGMENT_SIZE (128MB) THEN
+        RETURN true
+    END IF
     
-    async def manual_flush(self, token: str = None, force: bool = False):
-        segments_to_flush = []
-        
-        if token:
-            segment = self.get_active_segment(token)
-            if segment and (force or segment.size_bytes >= self.config.min_rotation_bytes):
-                segments_to_flush.append(segment)
-        else:
-            # Flush all active segments
-            for segment in self.get_all_active_segments():
-                if force or segment.size_bytes >= self.config.min_rotation_bytes:
-                    segments_to_flush.append(segment)
-        
-        for segment in segments_to_flush:
-            await self.rotate_segment(segment)
-        
-        return segments_to_flush
+    // Don't rotate tiny segments unless they're very old
+    IF segment.size_bytes < MIN_ROTATION_SIZE (64KB) AND 
+       segment.age_seconds < FORCE_ROTATION_TIME (6 hours) THEN
+        RETURN false
+    END IF
+    
+    // Determine if segment is actively receiving logs
+    seconds_since_last_write = current_time - segment.last_write_time
+    is_active = seconds_since_last_write < IDLE_THRESHOLD (10 minutes)
+    
+    IF is_active THEN
+        // Active segment: rotate frequently if minimum size reached
+        RETURN segment.age_seconds >= ACTIVE_ROTATION_TIME (5 minutes) AND
+               segment.size_bytes >= MIN_ROTATION_SIZE (64KB)
+    ELSE
+        // Idle segment: rotate less frequently
+        RETURN segment.age_seconds >= IDLE_ROTATION_TIME (1 hour)
+    END IF
+END FUNCTION
+```
+
+### Manual Flush Logic
+
+```pseudocode
+FUNCTION manual_flush(target_token, force_flag):
+    segments_to_flush = []
+    
+    IF target_token is specified THEN
+        segment = get_active_segment_for_token(target_token)
+        IF segment exists AND (force_flag OR segment.size_bytes >= MIN_ROTATION_SIZE) THEN
+            ADD segment to segments_to_flush
+        END IF
+    ELSE
+        // Flush all tokens
+        FOR EACH active_segment IN get_all_active_segments() DO
+            IF force_flag OR active_segment.size_bytes >= MIN_ROTATION_SIZE THEN
+                ADD active_segment to segments_to_flush
+            END IF
+        END FOR
+    END IF
+    
+    FOR EACH segment IN segments_to_flush DO
+        rotate_segment(segment)
+        queue_for_forwarding(segment)
+    END FOR
+    
+    RETURN segments_to_flush
+END FUNCTION
+```
+
+### Configuration Constants
+
+```pseudocode
+CONSTANTS:
+    MAX_SEGMENT_SIZE = 128 * 1024 * 1024     // 128MB
+    MIN_ROTATION_SIZE = 64 * 1024            // 64KB
+    ACTIVE_ROTATION_TIME = 5 * 60            // 5 minutes
+    IDLE_ROTATION_TIME = 60 * 60             // 1 hour
+    IDLE_THRESHOLD = 10 * 60                 // 10 minutes
+    FORCE_ROTATION_TIME = 6 * 60 * 60        // 6 hours
 ```
 
 ## Alternatives Considered
 
 ### Alternative 1: **Simple Time-Based Rotation (Original)**
+
 - **Approach**: Rotate every 1 hour regardless of size
 - **Pros**: Simple, predictable
 - **Cons**: Creates many small files, storage inefficient
 - **Decision**: Rejected due to file system pollution
 
 ### Alternative 2: **Size-Only Rotation**
+
 - **Approach**: Only rotate when segments reach 128MB
 - **Pros**: Efficient storage, fewer files
 - **Cons**: Poor debugging experience, logs could be delayed for hours
 - **Decision**: Rejected due to debugging requirements
 
 ### Alternative 3: **Fixed Short Intervals**
+
 - **Approach**: Rotate every 5 minutes for all services
 - **Pros**: Fast log visibility
 - **Cons**: Excessive file creation for idle services
 - **Decision**: Rejected due to operational overhead
 
 ### Alternative 4: **Manual-Only Rotation**
+
 - **Approach**: Only rotate on manual flush or size limit
 - **Pros**: Complete control, no unnecessary files
 - **Cons**: Requires manual intervention, poor for production monitoring
@@ -227,11 +263,11 @@ small_segment_rotations_total{token="..."}  # size < 1MB
 
 ## Acceptance Criteria
 
-- ✅ Active services (writes in last 10min) rotate segments every 5 minutes if ≥1MB
+- ✅ Active services (writes in last 10min) rotate segments every 5 minutes if ≥64KB
 - ✅ Idle services rotate segments every 1 hour regardless of size
 - ✅ No segment exceeds 128MB
 - ✅ Manual flush endpoint works for immediate debugging
-- ✅ Segments smaller than 1MB don't rotate unless idle for 1+ hours
+- ✅ Segments smaller than 64KB don't rotate unless idle for 1+ hours
 - ✅ Force rotation after 6 hours prevents indefinite delays
 - ✅ Configuration is hot-reloadable
 - ✅ Metrics provide visibility into rotation patterns
@@ -245,6 +281,7 @@ small_segment_rotations_total{token="..."}  # size < 1MB
 ---
 
 **Next Steps:**
+
 1. Implement adaptive rotation logic with configuration
 2. Add manual flush endpoint with proper authentication
 3. Create comprehensive test cases for all rotation scenarios
