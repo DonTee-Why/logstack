@@ -217,6 +217,25 @@ def _set_env_from_config(config_data: Dict[str, Any]) -> None:
         if api_keys:
             import json
             os.environ["LOGSTACK_SECURITY_API_KEYS"] = json.dumps(api_keys)
+    
+    # Handle masking settings
+    if "LOGSTACK_MASKING_BASELINE_KEYS" not in os.environ:
+        baseline_keys = config_data.get("masking", {}).get("baseline_keys")
+        if baseline_keys:
+            import json
+            os.environ["LOGSTACK_MASKING_BASELINE_KEYS"] = json.dumps(baseline_keys)
+    
+    if "LOGSTACK_MASKING_PARTIAL_RULES" not in os.environ:
+        partial_rules = config_data.get("masking", {}).get("partial_rules")
+        if partial_rules:
+            import json
+            os.environ["LOGSTACK_MASKING_PARTIAL_RULES"] = json.dumps(partial_rules)
+    
+    if "LOGSTACK_MASKING_TENANT_OVERRIDES" not in os.environ:
+        tenant_overrides = config_data.get("masking", {}).get("tenant_overrides")
+        if tenant_overrides:
+            import json
+            os.environ["LOGSTACK_MASKING_TENANT_OVERRIDES"] = json.dumps(tenant_overrides)
 
 
 def reload_settings() -> Settings:

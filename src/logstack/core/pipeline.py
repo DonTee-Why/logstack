@@ -18,6 +18,7 @@ import structlog
 
 from ..config import Settings
 from ..models.log_entry import LogEntry
+from .masking import mask_log_entries
 from .metrics import MetricsCollector
 
 logger = structlog.get_logger(__name__)
@@ -76,8 +77,23 @@ class ProcessingPipeline:
             request_id=request_id,
         )
         
-        # Placeholder implementation
-        # TODO: Implement actual processing pipeline
+        # Step 1: Convert Pydantic models to dicts for processing
+        entry_dicts = [entry.dict() for entry in entries]
+        
+        # Step 2: Apply data masking (CRITICAL: before WAL persistence)
+        logger.debug("Applying data masking", token=token[:8] + "...")
+        masked_entries = mask_log_entries(entry_dicts, token)
+        
+        # Step 3: TODO - Schema validation (already done by Pydantic)
+        # Step 4: TODO - Normalization for Loki format
+        # Step 5: TODO - WAL persistence
+        
+        logger.info(
+            "Batch processing completed",
+            token=token[:8] + "...",
+            entries_processed=len(masked_entries),
+            request_id=request_id,
+        )
         
         # Record metrics (if available)
         if self.metrics:
@@ -86,6 +102,9 @@ class ProcessingPipeline:
                 entries_count=len(entries),
                 batch_size=len(entries),
             )
+            
+            # Record masking metrics
+            self.metrics.record_masking(token, "baseline_masking", len(entries))
         
         return ProcessingResult(
             entries_processed=len(entries),

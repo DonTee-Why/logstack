@@ -60,8 +60,10 @@ validation:
   max_label_value_length: 64
 
 masking:
-  baseline_keys: ["password", "token", "authorization", "api_key", "secret", "card_number"]
+  baseline_keys: ["password", "token", "authorization", "api_key", "secret", "card_number", "email"]
   partial_rules:
     authorization:
       keep_prefix: 5
+    email:
+      mask_email: true
   tenant_overrides: {}

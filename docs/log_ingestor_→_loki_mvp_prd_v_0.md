@@ -182,6 +182,7 @@ masking:
   baseline_keys: ["password","token","authorization","api_key","secret","card_number"]
   partial:
     authorization: { keep_prefix: 5 }
+    email: { mask_email: True }
   tenants: {}   # additive keys per token as needed
 ```
 
