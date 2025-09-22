@@ -1,0 +1,55 @@
+# LogStack - Log Ingestor → Grafana Loki
+# Production dependencies with exact versions for reproducible builds
+
+# Core FastAPI stack
+fastapi==0.117.1
+uvicorn[standard]==0.36.0
+pydantic==2.11.9
+starlette==0.48.0
+
+# HTTP client and async file operations
+httpx==0.28.1
+
+# Additional FastAPI features
+python-multipart==0.0.20
+
+# Core dependencies (automatically installed with above)
+annotated-types==0.7.0
+anyio==4.10.0
+certifi==2025.8.3
+click==8.3.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.6.4
+idna==3.10
+sniffio==1.3.1
+typing_extensions==4.15.0
+uvloop==0.21.0
+watchfiles==1.1.0
+websockets==15.0.1
+
+# LogStack specific dependencies
+pydantic-settings>=2.1.0
+aiofiles>=23.2.0
+prometheus-client>=0.19.0
+structlog>=23.2.0
+python-json-logger>=2.0.7
+PyYAML>=6.0
+types-PyYAML>=6.0
+
+# Additional FastAPI features
+python-multipart>=0.0.6
+
+# Development dependencies (optional)
+# Uncomment for development
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.1.0
+# black>=23.9.0
+# ruff>=0.1.0
+# mypy>=1.6.0
+# Optional FastAPI CLI tools (can be removed in production)
+fastapi-cli==0.0.13
+python-dotenv==1.1.1
+rich==14.1.0
+typer==0.19.1

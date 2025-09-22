@@ -1,0 +1,67 @@
+# LogStack Configuration File
+# You can override any of these with environment variables using LOGSTACK_ prefix
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  debug: true
+  log_level: "DEBUG"
+
+security:
+  # Rate limiting
+  rate_limit_rps: 1
+  rate_limit_burst: 5
+  admin_token: "logstack_admin123456789abcdef0123"
+  
+  # API Keys
+  api_keys:
+    "logstack_1a2b3c4d5e6f7890abcdef12":
+      name: "payments-api"
+      active: true
+      description: "Payments service API key"
+    "logstack_9f8e7d6c5b4a3210fedcba98":
+      name: "user-service"
+      active: true
+      description: "User service API key"
+    "logstack_admin123456789abcdef0123":
+      name: "admin"
+      active: true
+      description: "Admin API key for flush operations"
+
+wal:
+  root_path: "./wal"
+  segment_max_bytes: 134217728  # 128MB
+  rotation_time_active_minutes: 5
+  rotation_time_idle_hours: 1
+  idle_threshold_minutes: 10
+  min_rotation_bytes: 65536  # 64KB
+  force_rotation_hours: 6
+  token_wal_quota_bytes: 2147483648  # 2GB
+  token_wal_quota_age_hours: 24
+  disk_free_min_ratio: 0.20
+  flush_endpoint_enabled: true
+
+loki:
+  base_url: "http://localhost:3100"
+  push_endpoint: "/loki/api/v1/push"
+  timeout_seconds: 30
+  max_retries: 3
+  backoff_seconds: [5, 10, 20]
+  backoff_park_seconds: 60
+  batch_max_entries: 1000
+  batch_max_bytes: 1048576  # 1MB
+
+validation:
+  entry_bytes_max: 32768  # 32KB
+  batch_entries_max: 500
+  batch_bytes_max: 1048576  # 1MB
+  allowed_labels: ["service", "env", "level", "schema_version", "region", "tenant"]
+  max_labels: 6
+  max_label_value_length: 64
+
+masking:
+  baseline_keys: ["password", "token", "authorization", "api_key", "secret", "card_number"]
+  partial_rules:
+    authorization:
+      keep_prefix: 5
+  tenant_overrides: {}
