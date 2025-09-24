@@ -42,7 +42,7 @@ wal:
   flush_endpoint_enabled: true
 
 loki:
-  base_url: "http://localhost:3100"
+  base_url: "http://loki.observability.svc.cluster.local:3100"
   push_endpoint: "/loki/api/v1/push"
   timeout_seconds: 30
   max_retries: 3
