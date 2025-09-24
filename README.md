@@ -161,6 +161,19 @@ LOGSTACK_SECURITY_RATE_LIMIT_RPS=2000
 LOGSTACK_SECURITY_RATE_LIMIT_BURST=10000
 LOGSTACK_SECURITY_ADMIN_TOKEN=your-admin-token
 
+# API Keys - Method 1: JSON string (all keys at once)
+LOGSTACK_SECURITY_API_KEYS='{"logstack_123":{"name":"service1","active":true}}'
+
+# API Keys - Method 2: Individual environment variables (recommended)
+LOGSTACK_API_KEY_PAYMENTS_TOKEN=logstack_payments_123456789
+LOGSTACK_API_KEY_PAYMENTS_NAME=payments-api
+LOGSTACK_API_KEY_PAYMENTS_ACTIVE=true
+LOGSTACK_API_KEY_PAYMENTS_DESCRIPTION="Payments service API key"
+
+LOGSTACK_API_KEY_USER_TOKEN=logstack_user_987654321
+LOGSTACK_API_KEY_USER_NAME=user-service
+LOGSTACK_API_KEY_USER_ACTIVE=true
+
 # WAL
 LOGSTACK_WAL_ROOT_PATH=./wal
 LOGSTACK_WAL_SEGMENT_MAX_BYTES=134217728
@@ -169,6 +182,52 @@ LOGSTACK_WAL_SEGMENT_MAX_BYTES=134217728
 LOGSTACK_LOKI_BASE_URL=http://localhost:3100
 LOGSTACK_LOKI_TIMEOUT_SECONDS=30
 ```
+
+### 🔑 API Key Management
+
+LogStack supports multiple ways to configure API keys:
+
+#### **Method 1: Individual Environment Variables (Recommended)**
+
+```bash
+# Define each API key separately
+export LOGSTACK_API_KEY_PAYMENTS_TOKEN="logstack_payments_123456789"
+export LOGSTACK_API_KEY_PAYMENTS_NAME="payments-api"
+export LOGSTACK_API_KEY_PAYMENTS_ACTIVE="true"
+export LOGSTACK_API_KEY_PAYMENTS_DESCRIPTION="Payments service API key"
+
+export LOGSTACK_API_KEY_USER_TOKEN="logstack_user_987654321"
+export LOGSTACK_API_KEY_USER_NAME="user-service"
+export LOGSTACK_API_KEY_USER_ACTIVE="true"
+```
+
+**Pattern**: `LOGSTACK_API_KEY_{NAME}_{FIELD}`
+
+- `{NAME}`: Uppercase identifier for your service (e.g., PAYMENTS, USER, ANALYTICS)
+- `{FIELD}`: TOKEN (required), NAME, ACTIVE, DESCRIPTION
+
+#### **Method 2: JSON Environment Variable**
+
+```bash
+export LOGSTACK_SECURITY_API_KEYS='{
+  "logstack_payments_123": {
+    "name": "payments-api",
+    "active": true,
+    "description": "Payments service API key"
+  },
+  "logstack_user_456": {
+    "name": "user-service", 
+    "active": true,
+    "description": "User service API key"
+  }
+}'
+```
+
+#### **Method 3: Configuration File**
+
+Define in `config.yaml` (as shown in the configuration section above).
+
+**Priority Order**: Individual env vars > JSON env var > config file
 
 ## 🔒 Security Features
 
