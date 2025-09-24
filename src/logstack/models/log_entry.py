@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LogLevel(str, Enum):
@@ -121,11 +121,12 @@ class LogEntry(BaseModel):
         check_depth(v)
         return v
     
-    class Config:
+    model_config = ConfigDict(
         # Validate assignment to catch changes after creation
-        validate_assignment = True
+        validate_assignment=True,
         # Use enum values in serialization
-        use_enum_values = True
+        use_enum_values=True,
+    )
 
 
 class LogBatch(BaseModel):
@@ -148,7 +149,7 @@ class LogBatch(BaseModel):
             raise ValueError("Batch must contain at least one entry")
         
         # Rough size estimation (will be validated more precisely in the handler)
-        estimated_size = sum(len(entry.json()) for entry in v)
+        estimated_size = sum(len(entry.model_dump_json()) for entry in v)
         if estimated_size > 1_048_576:  # 1MB
             raise ValueError("Batch size exceeds 1MB limit")
         

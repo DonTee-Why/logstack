@@ -78,7 +78,7 @@ class ProcessingPipeline:
         )
         
         # Step 1: Convert Pydantic models to dicts for processing
-        entry_dicts = [entry.dict() for entry in entries]
+        entry_dicts = [entry.model_dump() for entry in entries]
         
         # Step 2: Apply data masking (CRITICAL: before WAL persistence)
         logger.debug("Applying data masking", token=token[:8] + "...")

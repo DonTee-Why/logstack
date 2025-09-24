@@ -5,7 +5,7 @@ Main endpoint: POST /v1/logs:ingest
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import structlog
@@ -83,7 +83,7 @@ async def ingest_logs(
     
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     logger.info(
         "Processing log ingestion request",
@@ -117,7 +117,7 @@ async def ingest_logs(
             request_id=request_id,
             token=token[:8] + "...",
             entries_processed=result.entries_processed,
-            processing_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000,
+            processing_time_ms=(datetime.now(timezone.utc) - start_time).total_seconds() * 1000,
         )
         
         return response
