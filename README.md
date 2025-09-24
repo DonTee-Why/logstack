@@ -36,8 +36,16 @@ Client Services → FastAPI Ingestor → [Auth|Mask|Validate|WAL] → 202 Respon
 git clone <repo-url>
 cd logstack
 
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate #(Linux, macOS)
+.\venv\Scripts\activate.bat #(Windows CMD)
+.\venv\Scripts\Activate.ps1 #(Windows Powershell)
+
 # Install dependencies (FastAPI already installed)
-pip install -e .
+python -m pip install -r requirements.txt
 
 # Run the service
 python -m uvicorn src.logstack.main:app --reload --host 0.0.0.0 --port 8080
