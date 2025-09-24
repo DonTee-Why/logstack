@@ -215,5 +215,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Project specific
+config.yaml
+wal/
+
 # Other
 .DS_Store
