@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -45,7 +45,7 @@ class SecuritySettings(BaseSettings):
     rate_limit_burst: int = Field(default=10000, description="Rate limit burst capacity per token") 
     admin_token: str = Field(default="", description="Admin token for flush endpoint")
     api_keys: Dict[str, Dict[str, Any]] = Field(default_factory=dict, description="Valid API keys with metadata")
-    @validator("api_keys", pre=True)
+    @field_validator("api_keys", mode="before")
     def parse_api_keys(cls, v: Any) -> Dict[str, Dict[str, Any]]:
         """Parse API keys from JSON string if needed."""
         if isinstance(v, str):
@@ -107,7 +107,7 @@ class WALSettings(BaseSettings):
     # Manual flush
     flush_endpoint_enabled: bool = Field(default=True, description="Enable manual flush endpoint")
     
-    @validator("wal_root_path")
+    @field_validator("wal_root_path", mode="before")
     def validate_wal_path(cls, v: Path) -> Path:
         """Ensure WAL directory exists."""
         v.mkdir(parents=True, exist_ok=True)

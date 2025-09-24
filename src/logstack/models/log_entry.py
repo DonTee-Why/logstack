@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class LogLevel(str, Enum):
@@ -74,7 +74,7 @@ class LogEntry(BaseModel):
         description="Additional structured metadata"
     )
     
-    @validator("labels")
+    @field_validator("labels")
     def validate_labels(cls, v: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:
         """Validate labels according to PRD requirements."""
         if v is None:
@@ -100,7 +100,7 @@ class LogEntry(BaseModel):
         
         return v
     
-    @validator("metadata")
+    @field_validator("metadata")
     def validate_metadata(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Basic metadata validation."""
         if v is None:
@@ -141,7 +141,7 @@ class LogBatch(BaseModel):
         description="List of log entries (1-500 entries)"
     )
     
-    @validator("entries")
+    @field_validator("entries")
     def validate_batch_size(cls, v: List[LogEntry]) -> List[LogEntry]:
         """Validate batch doesn't exceed size limits."""
         if not v:
@@ -173,7 +173,7 @@ class IngestRequest(BaseModel):
         description="Optional idempotency key for deduplication"
     )
     
-    @validator("entries")
+    @field_validator("entries")
     def validate_entries(cls, v: List[LogEntry]) -> List[LogEntry]:
         """Validate entries using LogBatch validation."""
         # Reuse LogBatch validation logic
