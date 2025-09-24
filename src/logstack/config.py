@@ -203,6 +203,7 @@ def _set_env_from_config(config_data: Dict[str, Any]) -> None:
         ("security", "rate_limit_rps"): "LOGSTACK_SECURITY_RATE_LIMIT_RPS",
         ("security", "rate_limit_burst"): "LOGSTACK_SECURITY_RATE_LIMIT_BURST",
         ("security", "admin_token"): "LOGSTACK_SECURITY_ADMIN_TOKEN",
+        ("loki", "base_url"): "LOGSTACK_LOKI_BASE_URL",
     }
     
     for (section, key), env_var in mappings.items():
