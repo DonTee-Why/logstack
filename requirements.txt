@@ -40,12 +40,13 @@ types-PyYAML>=6.0
 # Additional FastAPI features
 python-multipart>=0.0.6
 
-# Development dependencies (optional)
-# Uncomment for development
-# pytest>=7.4.0
-# pytest-asyncio>=0.21.0
+# Development dependencies
+pytest>=8.4.2
+pytest-asyncio>=1.2.0
 # pytest-cov>=4.1.0
-# black>=23.9.0
+
+# Optional development tools
+# black>=23.9.0  
 # ruff>=0.1.0
 # mypy>=1.6.0
 # Optional FastAPI CLI tools (can be removed in production)
