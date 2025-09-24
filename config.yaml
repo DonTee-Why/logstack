@@ -9,8 +9,8 @@ server:
 
 security:
   # Rate limiting
-  rate_limit_rps: 1
-  rate_limit_burst: 5
+  rate_limit_rps: 2000
+  rate_limit_burst: 10000
   admin_token: "logstack_admin123456789abcdef0123"
   
   # API Keys
