@@ -115,6 +115,13 @@ async def logstack_exception_handler(request: Request, exc: LogStackException) -
         method=request.method,
     )
     
+    # Prepare response headers
+    headers = {}
+    
+    # Add Retry-After header for rate limit errors
+    if exc.status_code == 429 and "retry_after" in exc.details:
+        headers["Retry-After"] = str(exc.details["retry_after"])
+    
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -122,6 +129,7 @@ async def logstack_exception_handler(request: Request, exc: LogStackException) -
             "message": str(exc),
             "details": exc.details,
         },
+        headers=headers,
     )
 
 
