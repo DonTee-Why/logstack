@@ -20,6 +20,7 @@ from ..config import Settings
 from ..models.log_entry import LogEntry
 from .masking import mask_log_entries
 from .metrics import MetricsCollector
+from .wal import get_wal_manager
 
 logger = structlog.get_logger(__name__)
 
@@ -52,6 +53,7 @@ class ProcessingPipeline:
     def __init__(self, settings: Settings, metrics: Optional[MetricsCollector] = None) -> None:
         self.settings = settings
         self.metrics = metrics
+        self.wal_manager = get_wal_manager()
         logger.info("Processing pipeline initialized", has_metrics=metrics is not None)
     
     async def process_batch(
@@ -63,8 +65,7 @@ class ProcessingPipeline:
     ) -> ProcessingResult:
         """
         Process a batch of log entries through the complete pipeline.
-        
-        TODO: Implement the actual processing steps:
+
         1. Data masking
         2. Schema validation (already done by Pydantic)
         3. Normalization for Loki
@@ -76,18 +77,18 @@ class ProcessingPipeline:
             entries_count=len(entries),
             request_id=request_id,
         )
-        
-        # Step 1: Convert Pydantic models to dicts for processing
+
+        # Convert Pydantic models to dicts
         entry_dicts = [entry.model_dump() for entry in entries]
-        
-        # Step 2: Apply data masking (CRITICAL: before WAL persistence)
+
         logger.debug("Applying data masking", token=token[:8] + "...")
+
+        # Mask sensitive data
         masked_entries = mask_log_entries(entry_dicts, token)
-        
-        # Step 3: TODO - Schema validation (already done by Pydantic)
-        # Step 4: TODO - Normalization for Loki format
-        # Step 5: TODO - WAL persistence
-        
+
+        # WAL persistence
+        await self.wal_manager.append(token, masked_entries)
+
         logger.info(
             "Batch processing completed",
             token=token[:8] + "...",
@@ -95,7 +96,7 @@ class ProcessingPipeline:
             request_id=request_id,
         )
         
-        # Record metrics (if available)
+        # Record metrics
         if self.metrics:
             self.metrics.record_ingestion(
                 token=token,
@@ -103,7 +104,6 @@ class ProcessingPipeline:
                 batch_size=len(entries),
             )
             
-            # Record masking metrics
             self.metrics.record_masking(token, "baseline_masking", len(entries))
         
         return ProcessingResult(

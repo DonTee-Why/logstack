@@ -4,7 +4,6 @@ Main FastAPI application entry point.
 This module sets up the FastAPI app with all middleware, routes, and lifecycle events.
 """
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict
@@ -14,10 +13,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import healthz, logs, metrics
+from .api import admin, healthz, logs, metrics
 from .config import get_settings, Settings
 from .core.exceptions import LogStackException
-from .core.forwarder import AsyncForwarder
+from .core.forwarder_service import get_forwarder_service
+from .core.health import get_health_checker
 from .core.metrics import MetricsCollector
 
 
@@ -69,12 +69,15 @@ def create_lifespan_handler(settings: Settings) -> Any:
         metrics_collector = MetricsCollector()
         app.state.metrics = metrics_collector
         
-        # Start async forwarder
-        forwarder = AsyncForwarder(settings=settings, metrics=metrics_collector)
-        app.state.forwarder = forwarder
+        # Start forwarder service
+        forwarder_service = get_forwarder_service()
+        app.state.forwarder_service = forwarder_service
+        await forwarder_service.start()
         
-        # Start background tasks
-        forwarder_task = asyncio.create_task(forwarder.start())
+        # Start health checker
+        health_checker = get_health_checker(forwarder_service)
+        app.state.health_checker = health_checker
+        await health_checker.start()
         
         try:
             logger.info("LogStack service started successfully")
@@ -83,13 +86,13 @@ def create_lifespan_handler(settings: Settings) -> Any:
             logger.info("Shutting down LogStack service")
             
             # Graceful shutdown
-            await forwarder.stop()
-            forwarder_task.cancel()
+            forwarder = getattr(app.state, 'forwarder_service', None)
+            if forwarder is not None:
+                await forwarder.stop()
             
-            try:
-                await forwarder_task
-            except asyncio.CancelledError:
-                logger.info("Forwarder task cancelled during shutdown")
+            # health_checker = getattr(app.state, 'health_checker', None)
+            if health_checker is not None:
+                await health_checker.stop()
             
             logger.info("LogStack service shutdown complete")
     
@@ -193,6 +196,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 # Include routers
 app.include_router(logs.router, prefix="/v1", tags=["logs"])
+app.include_router(admin.router, tags=["admin"])
 app.include_router(metrics.router, tags=["metrics"])
 app.include_router(healthz.router, tags=["health"])
 
