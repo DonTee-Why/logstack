@@ -12,6 +12,7 @@ import asyncio
 import shutil
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -32,7 +33,7 @@ class HealthCheck:
     status: str  # "healthy", "unhealthy", "unknown"
     message: str
     details: Dict[str, Any]
-    last_check: float
+    last_check: datetime
 
 
 @dataclass
@@ -41,7 +42,7 @@ class HealthStatus:
     is_healthy: bool
     checks: Dict[str, HealthCheck]
     failed_checks: List[str]
-    timestamp: float
+    timestamp: datetime
 
 
 class HealthChecker:
@@ -104,7 +105,7 @@ class HealthChecker:
                     status="unhealthy",
                     message=f"Check failed: {str(result)}",
                     details={"error": str(result), "error_type": type(result).__name__},
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
                 failed_checks.append(name)
             elif isinstance(result, HealthCheck):
@@ -119,7 +120,7 @@ class HealthChecker:
             is_healthy=is_healthy,
             checks=checks,
             failed_checks=failed_checks,
-            timestamp=time.time()
+            timestamp=datetime.now()
         )
     
     async def _check_loki_connectivity(self) -> HealthCheck:
@@ -130,7 +131,7 @@ class HealthChecker:
                 status="unhealthy",
                 message="Health checker not started",
                 details={},
-                last_check=time.time()
+                last_check=datetime.now()
             )
         
         try:
@@ -140,7 +141,8 @@ class HealthChecker:
             
             async with self._session.get(ready_url) as response:
                 if response.status == 200:
-                    self._last_loki_check = time.time()
+                    check_time = datetime.now()
+                    self._last_loki_check = check_time.timestamp()
                     self._loki_healthy = True
                     
                     return HealthCheck(
@@ -150,9 +152,9 @@ class HealthChecker:
                         details={
                             "url": ready_url,
                             "status_code": response.status,
-                            "response_time_ms": int((time.time() - (self._last_loki_check or 0)) * 1000)
+                            "response_time_ms": int((check_time.timestamp() - (self._last_loki_check or 0)) * 1000)
                         },
-                        last_check=self._last_loki_check
+                        last_check=check_time
                     )
                 else:
                     return HealthCheck(
@@ -164,7 +166,7 @@ class HealthChecker:
                             "status_code": response.status,
                             "response_body": await response.text()
                         },
-                        last_check=time.time()
+                        last_check=datetime.now()
                     )
                     
         except Exception as e:
@@ -174,7 +176,7 @@ class HealthChecker:
                 status="unhealthy",
                 message=f"Cannot reach Loki: {str(e)}",
                 details={"error": str(e), "url": self.settings.loki.base_url},
-                last_check=time.time()
+                last_check=datetime.now()
             )
     
     def _check_disk_space(self) -> HealthCheck:
@@ -209,7 +211,7 @@ class HealthChecker:
                     "free_percentage": round(free_percentage, 1),
                     "min_required_percentage": round(min_free_percentage, 1)
                 },
-                last_check=time.time()
+                last_check=datetime.now()
             )
             
         except Exception as e:
@@ -218,7 +220,7 @@ class HealthChecker:
                 status="unhealthy",
                 message=f"Disk check failed: {str(e)}",
                 details={"error": str(e)},
-                last_check=time.time()
+                last_check=datetime.now()
             )
     
     def _check_wal_integrity(self) -> HealthCheck:
@@ -233,7 +235,7 @@ class HealthChecker:
                     status="unhealthy",
                     message="WAL root directory does not exist",
                     details={"path": str(wal_root)},
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
             
             if not wal_root.is_dir():
@@ -242,7 +244,7 @@ class HealthChecker:
                     status="unhealthy",
                     message="WAL root path is not a directory",
                     details={"path": str(wal_root)},
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
             
             # Test write access
@@ -256,7 +258,7 @@ class HealthChecker:
                     status="unhealthy",
                     message=f"WAL directory not writable: {str(e)}",
                     details={"path": str(wal_root), "error": str(e)},
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
             
             # Count segments and check basic structure
@@ -281,7 +283,7 @@ class HealthChecker:
                     "ready_segments": total_ready_segments,
                     "writable": True
                 },
-                last_check=time.time()
+                last_check=datetime.now()
             )
             
         except Exception as e:
@@ -291,7 +293,7 @@ class HealthChecker:
                 status="unhealthy",
                 message=f"WAL integrity check failed: {str(e)}",
                 details={"error": str(e)},
-                last_check=time.time()
+                last_check=datetime.now()
             )
     
     def _check_forwarder_service(self) -> HealthCheck:
@@ -303,7 +305,7 @@ class HealthChecker:
                     status="unhealthy",
                     message="Forwarder service not available",
                     details={},
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
             
             is_healthy = self.forwarder_service.is_healthy()
@@ -317,7 +319,7 @@ class HealthChecker:
                         "running": self.forwarder_service._running,
                         "forwarder_available": self.forwarder_service.forwarder is not None
                     },
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
             else:
                 return HealthCheck(
@@ -328,7 +330,7 @@ class HealthChecker:
                         "running": getattr(self.forwarder_service, '_running', False),
                         "forwarder_available": self.forwarder_service.forwarder is not None
                     },
-                    last_check=time.time()
+                    last_check=datetime.now()
                 )
                 
         except Exception as e:
@@ -337,7 +339,7 @@ class HealthChecker:
                 status="unhealthy",
                 message=f"Forwarder check failed: {str(e)}",
                 details={"error": str(e)},
-                last_check=time.time()
+                last_check=datetime.now()
             )
 
 
