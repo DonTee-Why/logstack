@@ -178,3 +178,36 @@ async def check_rate_limit(token: str) -> None:
     """
     rate_limiter = get_rate_limiter()
     await rate_limiter.check_rate_limit(token)
+
+
+async def authenticate_admin_token(token: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    """
+    Authenticate admin token dependency.
+    
+    This is a specialized version of authenticate_token that specifically
+    validates admin tokens for administrative operations.
+    
+    Returns:
+        str: The validated admin token
+        
+    Raises:
+        AuthenticationError: If token is invalid or not an admin token
+    """
+    # First, do standard token authentication
+    validated_token = await authenticate_token(token)
+    
+    # Then check if it's the admin token
+    settings = get_settings()
+    if validated_token != settings.security.admin_token or not settings.security.admin_token:
+        logger.warning(
+            "Admin operation attempted with non-admin token",
+            token=validated_token[:8] + "...",
+        )
+        raise AuthenticationError("Admin token required for this operation")
+    
+    logger.debug(
+        "Admin token authenticated successfully",
+        token=validated_token[:8] + "..."
+    )
+    
+    return validated_token
