@@ -13,12 +13,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import admin, healthz, logs, metrics
-from .config import get_settings, Settings
-from .core.exceptions import LogStackException
-from .core.forwarder_service import get_forwarder_service
-from .core.health import get_health_checker
-from .core.metrics import MetricsCollector
+from src.logstack.api import admin_router, healthz_router, logs_router, metrics_router
+from src.logstack.config import get_settings, Settings
+from src.logstack.core.exceptions import LogStackException
+from src.logstack.core.forwarder_service import get_forwarder_service
+from src.logstack.core.health import get_health_checker
+from src.logstack.core.metrics import MetricsCollector
 
 
 def configure_logging(log_level: str = "INFO") -> None:
@@ -195,10 +195,10 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 # Include routers
-app.include_router(logs.router, prefix="/v1", tags=["logs"])
-app.include_router(admin.router, tags=["admin"])
-app.include_router(metrics.router, tags=["metrics"])
-app.include_router(healthz.router, tags=["health"])
+app.include_router(logs_router, prefix="/v1", tags=["logs"])
+app.include_router(admin_router, tags=["admin"])
+app.include_router(metrics_router, tags=["metrics"])
+app.include_router(healthz_router, tags=["health"])
 
 
 @app.get("/", include_in_schema=False)
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     
     settings = get_settings()
     uvicorn.run(
-        "logstack.main:app",
+        "src.logstack.main:app",
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),
