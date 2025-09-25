@@ -84,6 +84,16 @@ curl http://localhost:8000/metrics
 # Admin operations (use admin token)
 curl -X POST http://localhost:8000/v1/admin/flush \
   -H "Authorization: Bearer logstack_admin123456789abcdef0123"
+
+# Generate new API token for a service
+curl -X POST http://localhost:8000/v1/admin/tokens/generate \
+  -H "Authorization: Bearer logstack_admin123456789abcdef0123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "service_name": "analytics-service",
+    "description": "Analytics data processing service",
+    "active": true
+  }'
 ```
 
 ## 📋 API Endpoints
@@ -96,6 +106,7 @@ curl -X POST http://localhost:8000/v1/admin/flush \
 | `/metrics` | GET | Prometheus metrics exposition | None |
 | `/v1/admin/flush` | POST | Force WAL segment flush to Loki | Admin token |
 | `/v1/admin/status` | GET | Admin status information | Admin token |
+| `/v1/admin/tokens/generate` | POST | Generate new API token for service | Admin token |
 | `/` | GET | Service information and version | None |
 
 ## 🔧 Configuration
@@ -306,7 +317,8 @@ src/logstack/
 │   ├── metrics.py       # Metrics collection
 │   └── exceptions.py    # Custom exceptions
 └── models/              # Data models
-    └── log_entry.py     # Pydantic schemas
+    ├── log_entry.py     # Log ingestion Pydantic schemas
+    └── admin.py         # Admin operation Pydantic schemas
 
 tests/                   # Test suite
 ├── unit/               # Unit tests
